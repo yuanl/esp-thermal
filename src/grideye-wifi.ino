@@ -1,8 +1,8 @@
 #include <FS.h>
 #include <ArduinoJson.h>
 
+#include <SparkFun_GridEYE_Arduino_Library.h>
 #include <Wire.h>
-#include <Adafruit_AMG88xx.h>
 
 #include <ESP8266WiFi.h>
 #include <MQTT.h>
@@ -21,10 +21,10 @@
 char mqtt_server[40] = "192.168.1.1";
 char room_uuid[40] = "xxxxxxxx-xxxx-4xxx-xxxx-xxxxxxxxxxxx";
 
-Adafruit_AMG88xx amg;
+GridEYE grideye;
 
-float pixels[AMG88xx_PIXEL_ARRAY_SIZE];
-const size_t capacity = JSON_ARRAY_SIZE(AMG88xx_PIXEL_ARRAY_SIZE) + 350;
+float pixels[64];
+const size_t capacity = JSON_ARRAY_SIZE(64) + 350;
 
 WiFiClient net;
 MQTTClient client(512); //set enough buffer for the 8x8 payload.
@@ -112,11 +112,8 @@ void setup() {
 
   client.begin(mqtt_server, net);
 
-  // default settings
-  if (!amg.begin()) {
-    Serial.println("Could not find a valid AMG88xx sensor, check wiring!");
-    while (1);
-  }
+  Wire.begin();
+  grideye.begin();
 
   delay(100); // let sensor boot up
 }
@@ -134,12 +131,13 @@ void loop() {
     StaticJsonBuffer<capacity> jsonBuffer;
     JsonArray& root = jsonBuffer.createArray();
 
-    //read all the pixels
-    amg.readPixels(pixels);
-
+    for(unsigned char i = 0; i < 64; i++) {
+      pixels[i] = grideye.getPixelTemperature(i);
+    }
     root.copyFrom(pixels);
 
     root.printTo(payload);
+
     lastRawMillis = millis();
     client.publish(TOPIC_PREFIX + String(room_uuid) +
                   "/status" + TOPIC_DEVICE + "/raw", payload);
@@ -148,6 +146,6 @@ void loop() {
     lastTempMillis = millis();
     client.publish(TOPIC_PREFIX + String(room_uuid) +
                   "/status" + TOPIC_DEVICE + "/temperature",
-                  String(amg.readThermistor()), MQTT_RETAINED, MQTT_QOS);
+                  String(grideye.getDeviceTemperature()), MQTT_RETAINED, MQTT_QOS);
   }
 }
