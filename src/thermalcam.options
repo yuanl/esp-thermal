@@ -1,0 +1,3 @@
+sony.MQTTConfig.ip           max_size:32
+sony.MQTTConfig.uuid         max_size:64
+sony.Thermal.data            max_count:1024

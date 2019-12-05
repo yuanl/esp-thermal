@@ -1,0 +1,16 @@
+syntax = "proto2";
+
+package sony;
+
+message Thermal {
+  required uint64 id = 1;
+  required uint32 rows = 2;
+  required uint32 cols = 3;
+  repeated int32 data = 4 [packed = true];
+}
+
+message MQTTConfig {
+  required string ip = 1;
+  optional uint32 port = 2 [default = 1883];
+  required string uuid = 3;
+}
