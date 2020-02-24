@@ -1,6 +1,11 @@
 #include <FS.h>
 #include <ArduinoJson.h>
+#include <pb_encode.h>
+#include <pb_decode.h>
+#include "thermalcam.pb.h"
 
+#include <MLX90640_API.h>
+#include <MLX90640_I2C_Driver.h>
 #include <SparkFun_GridEYE_Arduino_Library.h>
 #include <Wire.h>
 
@@ -17,7 +22,7 @@
 #define DATA_INTERVAL 5 * 1000 //in millis
 #define TEMP_INTERVAL 60 * 1000
 #define TOPIC_PREFIX "SONY/"
-#define TOPIC_DEVICE "/sensor/grideye"
+#define TOPIC_DEVICE "/sensor/thermal"
 #define MQTT_RETAINED true
 #define MQTT_QOS 1
 
@@ -26,6 +31,8 @@ char room_uuid[40] = "xxxxxxxx-xxxx-4xxx-xxxx-xxxxxxxxxxxx";
 
 GridEYE grideye;
 
+uint8_t pb_buffer[1024];
+bool pb_status;
 float pixels[64];
 const size_t capacity = JSON_ARRAY_SIZE(64) + 350;
 
@@ -103,20 +110,32 @@ void setup() {
 
   //save the custom parameters to FS
   Serial.println("saving config");
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject& json = jsonBuffer.createObject();
-  json["mqtt_server"] = mqtt_server;
-  json["room_uuid"] = room_uuid;
+  /* DynamicJsonBuffer jsonBuffer; */
+  /* JsonObject& json = jsonBuffer.createObject(); */
+  /* json["mqtt_server"] = mqtt_server; */
+  /* json["room_uuid"] = room_uuid; */
+  sony_MQTTConfig config = sony_MQTTConfig_init_zero;
+  pb_ostream_t stream = pb_ostream_from_buffer(pb_buffer, sizeof(pb_buffer));
+  strcpy(config.ip, mqtt_server);
+  strcpy(config.uuid, room_uuid);
 
-  File configFile = SPIFFS.open("/config.json", "w");
-  if (!configFile) {
-    Serial.println("failed to open config file for writing");
+  /* encode config setting */
+  pb_status = pb_encode(&stream, sony_MQTTConfig_fields, &config);
+
+  if (!pb_status) {
+    Serial.println("Encoding failed\n");
+  } else {                      /* write to file when encode success */
+    File configFile = SPIFFS.open("/config", "w");
+    if (!configFile) {
+      Serial.println("failed to open config file for writing");
+    }
+    configFile.write(pb_buffer, stream.bytes_written);
+    Serial.println("config saved.\n");
+    configFile.close();
+    //end save
   }
 
-  json.printTo(Serial);
-  json.printTo(configFile);
-  configFile.close();
-  //end save
+
 
   /* hostname will be grideye.local */
   MDNS.begin("grideye");
