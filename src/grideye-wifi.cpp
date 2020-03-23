@@ -61,29 +61,38 @@ void setup() {
 
   if (SPIFFS.begin()) {
     Serial.println("mounted file system");
-    if (SPIFFS.exists("/config.json")) {
+    if (SPIFFS.exists("/config")) {
       //file exists, reading and loading
       Serial.println("reading config file");
-      File configFile = SPIFFS.open("/config.json", "r");
+      File configFile = SPIFFS.open("/config", "r");
       if (configFile) {
         Serial.println("opened config file");
-        size_t size = configFile.size();
-        // Allocate a buffer to store contents of the file.
-        std::unique_ptr<char[]> buf(new char[size]);
+        size_t configfile_size = configFile.size();
 
-        configFile.readBytes(buf.get(), size);
-        DynamicJsonBuffer jsonBuffer;
-        JsonObject& json = jsonBuffer.parseObject(buf.get());
-        json.printTo(Serial);
-        if (json.success()) {
-          Serial.println("\nparsed json");
+        /* allocate space for decode config. */
+        sony_MQTTConfig config = sony_MQTTConfig_init_default;
 
-          strcpy(mqtt_server, json["mqtt_server"]);
-          strcpy(room_uuid, json["room_uuid"]);
+        /* read config into buffer. */
+        configFile.read(pb_buffer, configfile_size);
+        pb_istream_t stream = pb_istream_from_buffer(pb_buffer, configfile_size);
 
-        } else {
-          Serial.println("failed to load json config");
+        pb_status = pb_decode(&stream, sony_MQTTConfig_fields, &config);
+
+        /* check for error. */
+        if (!pb_status) {
+          Serial.print("failed to decode config file!");
+        } else {                /* print the config content. */
+          Serial.print("ip: ");
+          Serial.println(config.ip);
+          strcpy(mqtt_server, config.ip);
+
+          Serial.print("port: ");
+          Serial.println(config.port);
+          Serial.print("uuid: ");
+          Serial.println(config.uuid);
+          strcpy(room_uuid, config.uuid);
         }
+
         configFile.close();
       }
     }
@@ -110,10 +119,6 @@ void setup() {
 
   //save the custom parameters to FS
   Serial.println("saving config");
-  /* DynamicJsonBuffer jsonBuffer; */
-  /* JsonObject& json = jsonBuffer.createObject(); */
-  /* json["mqtt_server"] = mqtt_server; */
-  /* json["room_uuid"] = room_uuid; */
   sony_MQTTConfig config = sony_MQTTConfig_init_zero;
   pb_ostream_t stream = pb_ostream_from_buffer(pb_buffer, sizeof(pb_buffer));
   strcpy(config.ip, mqtt_server);
