@@ -14,7 +14,7 @@ simple: simple.c thermalcam.pb.c thermalcam.pb.h
 	$(CC) $(CFLAGS) -o $@ $(CSRC) $^
 
 thermalcam.pb.c thermalcam.pb.h: thermalcam.proto thermalcam.options
-	$(NANOPB) $^
+	$(NANOPB) $<
 
 clean:
 	rm -f simple thermalcam.pb.c thermalcam.pb.h
