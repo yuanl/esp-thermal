@@ -95,6 +95,8 @@ void setup() {
 
         configFile.close();
       }
+    } else {
+      Serial.println("config file does not exist.");
     }
   } else {
     Serial.println("failed to mount FS");
@@ -119,7 +121,7 @@ void setup() {
 
   //save the custom parameters to FS
   Serial.println("saving config");
-  sony_MQTTConfig config = sony_MQTTConfig_init_zero;
+  sony_MQTTConfig config = sony_MQTTConfig_init_default;
   pb_ostream_t stream = pb_ostream_from_buffer(pb_buffer, sizeof(pb_buffer));
   strcpy(config.ip, mqtt_server);
   strcpy(config.uuid, room_uuid);

@@ -6,7 +6,7 @@ message Thermal {
   required uint64 id = 1;
   required uint32 rows = 2;
   required uint32 cols = 3;
-  repeated int32 data = 4 [packed = true];
+  repeated float data = 4 [packed = true];
 }
 
 message MQTTConfig {
